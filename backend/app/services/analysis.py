@@ -1,4 +1,3 @@
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -26,7 +25,7 @@ class Analysis:
     confidence_score: float
     certainty_level: str
     explanation: str
-    heatmap_path: str  # relative path inside the storage folder
+    heatmap_path: str  # storage key (see app.services.storage)
     model_status: str
 
 
@@ -55,8 +54,12 @@ def run_analysis(image_path: Path) -> Analysis:
     source = Path(raw["heatmap_path"])
     if source.suffix.lower() not in HEATMAP_EXTENSIONS or not source.is_file():
         raise PredictionError("The predictor did not produce a usable heatmap.")
-    relative, destination = storage.new_file_path("heatmaps", source.suffix.lower())
-    shutil.move(str(source), str(destination))
+    try:
+        relative = storage.save_bytes("heatmaps", source.suffix.lower(), source.read_bytes())
+    except Exception as exc:
+        raise PredictionError("The heatmap could not be stored.") from exc
+    finally:
+        source.unlink(missing_ok=True)
 
     return Analysis(
         predicted_class=raw["predicted_class"],

@@ -2,6 +2,7 @@ import os
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-real-use")
 os.environ["DATABASE_URL"] = "sqlite://"
+os.environ["CLOUDINARY_CLOUD_NAME"] = ""
 os.environ["REQUIRE_EMAIL_VERIFICATION"] = "false"
 
 import pytest
