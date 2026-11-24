@@ -1,9 +1,10 @@
 import logging
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -69,15 +70,18 @@ def _get_owned(db: Session, image_id: int, clinician_id: int) -> CervixImage:
     return image
 
 
-def _file_response(relative_path: str, media_type: str) -> FileResponse:
+def _file_response(relative_path: str, media_type: str) -> Response:
     try:
-        path = storage.resolve(relative_path)
+        data = storage.read_bytes(relative_path)
     except ValueError:
         raise HTTPException(404, "File not found.") from None
-    if not path.is_file():
+    except Exception:
+        logger.exception("Could not read a stored file")
+        raise HTTPException(502, "The file could not be retrieved right now.") from None
+    if data is None:
         raise HTTPException(404, "File not found.")
-    return FileResponse(
-        path,
+    return Response(
+        content=data,
         media_type=media_type,
         headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
     )
@@ -119,7 +123,11 @@ def upload_image(
         image_path = storage.save_bytes("uploads", extension, clean_bytes)
         saved.append(image_path)
 
-        analysis = run_analysis(storage.resolve(image_path))
+        # The model needs a file on disk; the stored copy may live in Cloudinary.
+        with tempfile.NamedTemporaryFile(suffix=extension) as tmp:
+            tmp.write(clean_bytes)
+            tmp.flush()
+            analysis = run_analysis(Path(tmp.name))
         saved.append(analysis.heatmap_path)
 
         record = CervixImage(

@@ -17,6 +17,20 @@ class Settings(BaseSettings):
         return value
 
     database_url: str = "sqlite:///./app.db"
+    # Hosted Postgres. When postgres_host is set (and DATABASE_URL is not
+    # overridden) the app uses it instead of the local SQLite file.
+    postgres_host: str = ""
+    postgres_port: int = 5432
+    postgres_user: str = ""
+    postgres_password: str = ""
+    postgres_database_name: str = ""
+
+    # Cloudinary file storage. When cloudinary_cloud_name is empty, files
+    # stay on the local disk (used by tests and local development).
+    cloudinary_cloud_name: str = ""
+    cloudinary_api_key: str = ""
+    cloudinary_api_secret: str = ""
+    cloudinary_folder: str = "UPLOADS"
     jwt_algorithm: str = "HS256"
     cors_origins: list[str] = ["https://cervical-screening-frontend.vercel.app"]
     access_token_minutes: int = 60
